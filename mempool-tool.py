@@ -1,58 +1,34 @@
-from authproxy import AuthServiceProxy, JSONRPCException
-from private import rpc_user, rpc_password
+import logging
 
-COIN = 100_000_000
-HALVING_INTERVAL = 210_000
+from tabulate import tabulate
+import rpc
+import miner
 
-
-rpc = AuthServiceProxy("http://%s:%s@127.0.0.1:8332" % (rpc_user, rpc_password))
-
-
-def get_current_block_fee(block_height: int) -> int:
-    """ Returns the current block fee in satoshis """
-    return rpc.getblockstats(block_height)["totalfee"]
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
-def get_next_block() -> (dict, dict):
-    """
-    Returns two items:
-    i) the block template of the next block
-    ii) json dump of the current mempool
-    """
-    return rpc.getblocktemplate({"rules": ["segwit"]}), rpc.getrawmempool(True)
+tip, mempool, tip_one_template = rpc.fetch_synced()
 
+# subtract blocktemplate entries from mempool
+mempool.remove_block_mempool(tip_one_template)
 
-def intersect_template_mempool(template, mempool) -> None:
-    """
-    Intersects block template and mempool, modifying the mempool object in-place
-    """
-    template_txs = set()
-    i = 0
-    for transaction in template["transactions"]:
-        template_txs.add(transaction["txid"])
-        i += 1
-    print(f"Parsed {i} transactions from template")
+# build a template for block tip + 2
+tip_two_template = miner.get_blocktemplate(
+    mempool, tip.height + 1, tip.version, tip.hash
+)
 
-    i = 0
-    for transaction in list(mempool):
-        if transaction in template_txs:
-            del mempool[transaction]
-            i += 1
-    print(f"Deleted {i} transactions from mempool after intersection of template and mempool")
+table = [
+    ["reward", f"{tip.reward:,}", f"{tip_one_template.reward:,}", f"{tip_two_template.reward:,}"],
+    ["fee", f"{tip.fee:,}", f"{tip_one_template.fee:,}", f"{tip_two_template.fee:,}"],
+    ["% of block reward", f"{tip.fee/tip.reward:.3f}", f"{tip_one_template.fee / tip_one_template.reward:.3f}", f"{tip_two_template.fee / tip_two_template.reward:.3f}"],
+    # ["weight", f"{block_tip.}"
+]
 
+table_headers = ["block", "tip", "tip +1", "tip + 2"]
 
-def calc_block_reward(block_height: int) -> int:
-    """
-    Calculates the block reward for a block
-    use e.g. calc_block_reward(rpc.getblockcount())
-    """
-    reward = 50 * COIN
-    halvings = int(block_height / HALVING_INTERVAL)
-    if halvings >= 64:
-        return 0
-    reward >>= halvings
-    return reward
-
-
-template, mempool = get_next_block()
-intersect_template_mempool(template, mempool)
+print(f"\nChain tip at height:   {tip.height}")
+print(f"Block subsidy is:      {tip.subsidy:,} satoshis")
+print(
+    f"\n{tabulate(table, headers=table_headers, tablefmt='github', colalign=('left', 'right', 'right', 'right'))}\n"
+)
