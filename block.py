@@ -1,7 +1,11 @@
 import logging
+from collections import OrderedDict
 
 import attr
 from consensus import COIN, HALVING_INTERVAL
+
+COINBASE_WEIGHT = 4000
+COINBASE_SIGOPS = 400
 
 
 logger = logging.getLogger(__name__)
@@ -22,12 +26,13 @@ class Block(object):
 
     height = attr.ib(type=int)
     version = attr.ib(type=int)
-    tx = attr.ib(type=dict)
+    tx = attr.ib(type=OrderedDict)
     previousblockhash = attr.ib(type=hex)
     hash = attr.ib(type=hex, default=64 * 0)
     size = attr.ib(type=int, default=0)
-    weight = attr.ib(type=int, default=0)
+    weight = attr.ib(type=int, default=COINBASE_WEIGHT)
     fee = attr.ib(type=int, default=0)
+    sigopscost = attr.ib(type=int, default=COINBASE_SIGOPS)
     template = attr.ib(type=bool, default=True)
 
     @classmethod
@@ -41,6 +46,7 @@ class Block(object):
         df = {k: v for k, v in d.items() if k in Block.pick_fields}
         block = cls(**df)
         block.fee = d["coinbasevalue"] - block.subsidy
+        block.calculate_sigops()
         return block
 
     @property
@@ -56,38 +62,49 @@ class Block(object):
     def reward(self):
         return int(self.subsidy + self.fee)
 
+    def calculate_sigops(self):
+        """
+        Calculate sigops_cost for blocks returned via Bitcoind `getblocktemplate` RPC
+        """
+        if not self.template:
+            logger.error("can't calculate sigops if not form `blocktemplate` from RPC")
+            return
+        for tx in self.tx:
+            self.sigopscost += tx["sigops"]
+
     def get_fee(self, rpc):
         if self.template:
             logger.error("can't fetch fee for blocktemplate from RPC")
             return
         self.fee = rpc.getblockstats(self.height)["totalfee"]
 
-    def init_coinbase(self):
-        self.weight += 1000
-
-    def add_transaction(self, txid, mempool):
+    def _add_by_txid(self, txid: str, mempool):
         """
-        Adds a transaction to the block
+        Add a transaction to the block
         """
         if txid in self.tx:
-            logger.debug(f"{txid} already in block, skipping")
+            logger.warning(f"{txid} already in block, skipping")
             return
         self.tx[txid] = mempool[txid]
-        _fee = int(self.tx[txid].fees["base"] * COIN)
-        _vsize = self.tx[txid].vsize
-        self.fee += _fee
-        self.weight += _vsize
+        self.fee += int(self.tx[txid].fees["base"] * COIN)
+        self.size += self.tx[txid].vsize
+        self.weight += self.tx[txid].weight
+        self.sigopscost += mempool[txid].sigopscost
         logger.debug(f"added tx {txid} to block {self.height}")
 
-    def add_chain(self, txid: str, mempool):
+    def add_transaction(self, txid: str, mempool):
         """
         Adds a complete transaction chain to the block and remove it from mempool
         """
-        for ancestor_txid in mempool[txid].depends:
-            self.add_chain(ancestor_txid, mempool)
-            self.add_transaction(ancestor_txid, mempool)
-            # mempool.remove_transaction(ancestor_txid)
+        if txid in self.tx:
+            return
 
-        self.add_transaction(txid, mempool)
+        for ancestor_txid in mempool[txid].depends:
+            self.add_transaction(ancestor_txid, mempool)
+
+        # Add it to the block
+        self._add_by_txid(txid, mempool)
+
+        # Remove it from the mempool
         # mempool.remove_transaction(txid)
         logger.debug(f"added chain for tx {txid} to block {self.height}")

@@ -1,4 +1,7 @@
+# Number of "satoshis" per Bitcoin
 COIN = 100_000_000
+
+# Number of blocks between subsidy halvings
 HALVING_INTERVAL = 210_000
 
 # The maximum allowed size for a serialized block, in bytes (only for buffer size limits)
@@ -26,6 +29,5 @@ MIN_SERIALIZABLE_TRANSACTION_WEIGHT = WITNESS_SCALE_FACTOR * 10
 # Flags for nSequence and nLockTime locks
 # Interpret sequence numbers as relative lock-time constraints.
 LOCKTIME_VERIFY_SEQUENCE = int(1 << 0)
-
 # Use GetMedianTimePast() instead of nTime for end point timestamp.
 LOCKTIME_MEDIAN_TIME_PAST = int(1 << 1)
