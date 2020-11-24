@@ -47,7 +47,7 @@ class Block(object):
         df = {k: v for k, v in d.items() if k in Block.pick_fields}
         block = cls(**df)
         block.fee = d["coinbasevalue"] - block.subsidy
-        block.calculate_sigops()
+        block.calculate_template()
         return block
 
     @property
@@ -63,15 +63,16 @@ class Block(object):
     def reward(self):
         return int(self.subsidy + self.fee)
 
-    def calculate_sigops(self):
+    def calculate_template(self):
         """
-        Calculate sigops_cost for blocks returned via Bitcoind `getblocktemplate` RPC
+        Calculate sigops_cost and weight for blocks returned via `getblocktemplate` RPC
         """
         if not self.template:
-            logger.error("can't calculate sigops if not form `blocktemplate` from RPC")
+            logger.error("can't calculate sigops and weight if not from `blocktemplate` RPC")
             return
         for tx in self.tx:
             self.sigopscost += tx["sigops"]
+            self.weight += tx["weight"]
 
     def get_fee(self, rpc):
         if self.template:
