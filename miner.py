@@ -85,27 +85,24 @@ def create_block(mempool, height, version, previousblockhash) -> Block:
         # Add the chain to the block
         block.add_transaction(txid, mempool)
 
-        # Re-sort the mempool
-        # sorted_list = sorted_mempool_list(mempool)
-
     return block
 
 
 def print_block_stats(block: Block, mempool_fee, mempool_weight, mempool_vsize, mempool_tx_count, mempool_sigops_count):
     print("\nBlock stats:\n")
     table = [
-        ["transactions", f"{mempool_tx_count:,}",     f"{len(block.tx):,}",       f""],
-        ["fee",          f"{mempool_fee:,}",          f"{block.fee:,}",           f""],
+        ["transactions", f"{mempool_tx_count:,}",     f"{len(block.tx):,}",       u"\u221E"],
+        ["fee",          f"{mempool_fee:,}",          f"{block.fee:,}",           u"\u221E"],
         ["weight",       f"{mempool_weight:,}",       f"{block.weight:,}",        f"{MAX_BLOCK_WEIGHT:,}"],
         ["vsize",        f"{mempool_vsize:,}",        f"{block.size:,}",          f"{MAX_BLOCK_SIZE:,}"],
         ["sigops",       f"{mempool_sigops_count:,}", f"{block.sigopscost:,}", f"{MAX_BLOCK_SIGOPS_COST:,}"]
     ]
-    table_headers = ["", "mempool", "tip + 1", "limit"]
+    table_headers = ["", "mempool", "tip + 2", "limit"]
     print(f"\n{tabulate(table, headers=table_headers, tablefmt='github', colalign=('left', 'right', 'right', 'right'))}\n")
 
 
 def check_block(block: Block):
-    # Allocate for coinbase transaction
+    # Allocate for coinbase transaction as we don't have one included
     weight = COINBASE_WEIGHT
     sigops = COINBASE_SIGOPS
     fee = 0
@@ -149,6 +146,7 @@ def get_blocktemplate(mempool: Mempool, height, version, previousblockhash) -> B
 
     tic = perf_counter()
     block = create_block(mempool, height, version, previousblockhash)
+    block.tip_offset = "+ 2"
     toc = perf_counter()
     logger.info(f"Block assembly took {toc - tic:.5f} seconds")
 

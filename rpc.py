@@ -30,6 +30,8 @@ def fetch_synced() -> (dict, Block, Block, Mempool):
         blocktemplate = Block.from_blocktemplate(
             rpc.getblocktemplate({"rules": ["segwit"]})
         )
+        blocktemplate.height = tip_height + 1
+        blocktemplate.tip_offset = "+ 1"
         logger.info(f"got blocktemplate with {len(blocktemplate.tx)} transactions")
         mempool = Mempool.from_json(rpc.getrawmempool(True))
         logger.info(f"got mempool dump with {len(mempool)} transactions")
@@ -39,9 +41,9 @@ def fetch_synced() -> (dict, Block, Block, Mempool):
             logger.warning(f"block found between getblocktemplate and getrawmempool")
         else:
             mempool_ok = check_mempool(mempool)
-            tip = Block.from_getblock(rpc.getblock(tip_hash))
+            tip = Block.from_getblock(rpc.getblock(tip_hash), tip_offset=u"\u2193")
             tip.get_fee(rpc)
-            previous = Block.from_getblock(rpc.getblock(rpc.getblockstats(tip_height-1)["blockhash"]))
+            previous = Block.from_getblock(rpc.getblock(rpc.getblockstats(tip_height-1)["blockhash"]), tip_offset="- 1")
             previous.get_fee(rpc)
 
     return previous, tip, blocktemplate, mempool

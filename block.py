@@ -34,11 +34,12 @@ class Block(object):
     fee = attr.ib(type=int, default=0)
     sigopscost = attr.ib(type=int, default=COINBASE_SIGOPS)
     template = attr.ib(type=bool, default=True)
+    tip_offset = attr.ib(type=str, default="")
 
     @classmethod
-    def from_getblock(cls, d):
+    def from_getblock(cls, d, tip_offset=""):
         df = {k: v for k, v in d.items() if k in Block.pick_fields}
-        return cls(template=False, **df)
+        return cls(tip_offset=tip_offset, template=False, **df)
 
     @classmethod
     def from_blocktemplate(cls, d):
