@@ -1,0 +1,49 @@
+From 62ce83ca44a79250306f67d23eaf65865103e475 Mon Sep 17 00:00:00 2001
+From: willcl-ark <will8clark@gmail.com>
+Date: Mon, 23 Nov 2020 10:26:13 +0000
+Subject: [PATCH] CLI: Return ancestorsigops and sigopscost
+
+... from getrawmempool
+---
+ src/rpc/blockchain.cpp | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/src/rpc/blockchain.cpp b/src/rpc/blockchain.cpp
+index 392073d047..c080e1b544 100644
+--- a/src/rpc/blockchain.cpp
++++ b/src/rpc/blockchain.cpp
+@@ -414,6 +414,7 @@ static std::vector<RPCResult> MempoolEntryDescription() { return {
+     RPCResult{RPCResult::Type::NUM, "weight", "transaction weight as defined in BIP 141."},
+     RPCResult{RPCResult::Type::STR_AMOUNT, "fee", "transaction fee in " + CURRENCY_UNIT + " (DEPRECATED)"},
+     RPCResult{RPCResult::Type::STR_AMOUNT, "modifiedfee", "transaction fee with fee deltas used for mining priority (DEPRECATED)"},
++    RPCResult{RPCResult::Type::NUM, "sigopscost", "number of sigops of this transaction"},
+     RPCResult{RPCResult::Type::NUM_TIME, "time", "local time transaction entered pool in seconds since 1 Jan 1970 GMT"},
+     RPCResult{RPCResult::Type::NUM, "height", "block height when transaction entered pool"},
+     RPCResult{RPCResult::Type::NUM, "descendantcount", "number of in-mempool descendant transactions (including this one)"},
+@@ -421,6 +422,7 @@ static std::vector<RPCResult> MempoolEntryDescription() { return {
+     RPCResult{RPCResult::Type::STR_AMOUNT, "descendantfees", "modified fees (see above) of in-mempool descendants (including this one) (DEPRECATED)"},
+     RPCResult{RPCResult::Type::NUM, "ancestorcount", "number of in-mempool ancestor transactions (including this one)"},
+     RPCResult{RPCResult::Type::NUM, "ancestorsize", "virtual transaction size of in-mempool ancestors (including this one)"},
++    RPCResult{RPCResult::Type::NUM, "ancestorsigops", "total sigop count of in-mempool ancestors (including this one)"},
+     RPCResult{RPCResult::Type::STR_AMOUNT, "ancestorfees", "modified fees (see above) of in-mempool ancestors (including this one) (DEPRECATED)"},
+     RPCResult{RPCResult::Type::STR_HEX, "wtxid", "hash of serialized transaction, including witness data"},
+     RPCResult{RPCResult::Type::OBJ, "fees", "",
+@@ -453,6 +455,7 @@ static void entryToJSON(const CTxMemPool& pool, UniValue& info, const CTxMemPool
+     info.pushKV("weight", (int)e.GetTxWeight());
+     info.pushKV("fee", ValueFromAmount(e.GetFee()));
+     info.pushKV("modifiedfee", ValueFromAmount(e.GetModifiedFee()));
++    info.pushKV("sigopscost", e.GetSigOpCost());
+     info.pushKV("time", count_seconds(e.GetTime()));
+     info.pushKV("height", (int)e.GetHeight());
+     info.pushKV("descendantcount", e.GetCountWithDescendants());
+@@ -460,6 +463,7 @@ static void entryToJSON(const CTxMemPool& pool, UniValue& info, const CTxMemPool
+     info.pushKV("descendantfees", e.GetModFeesWithDescendants());
+     info.pushKV("ancestorcount", e.GetCountWithAncestors());
+     info.pushKV("ancestorsize", e.GetSizeWithAncestors());
++    info.pushKV("ancestorsigops", e.GetSigOpCostWithAncestors());
+     info.pushKV("ancestorfees", e.GetModFeesWithAncestors());
+     info.pushKV("wtxid", pool.vTxHashes[e.vTxHashesIdx].first.ToString());
+     const CTransaction& tx = e.GetTx();
+-- 
+2.29.2
+
