@@ -1,4 +1,5 @@
 import logging
+from typing import Tuple
 
 from authproxy import AuthServiceProxy
 from block import Block
@@ -13,7 +14,7 @@ logging.getLogger("BitcoinRPC").setLevel(logging.INFO)
 rpc = AuthServiceProxy("http://%s:%s@127.0.0.1:8332" % (rpc_user, rpc_password))
 
 
-def fetch_synced() -> (dict, Block, Block, Mempool):
+def fetch_synced() -> Tuple[dict, Block, Block, Mempool]:
     """
     Fetches various data from Bitcoin Core RPC.
     Will check that tip_height before and after the fetches match, if they don't a block

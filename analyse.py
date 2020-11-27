@@ -1,8 +1,15 @@
+import math
 from tabulate import tabulate
 
 
-def reorg_chance(val):
-    return max(0, (1 - (1 / val**2)))
+def estimate_reorg(val):
+    # Estimate how likely someone is to perhaps try a re-org.
+    # This does not consider hash power which would also affect the likelihood.
+    # Error function: https://en.wikipedia.org/wiki/Error_function
+    # Add a scaling factor of 1.5, this gives a 50% chance of re-org when fees
+    # of current block` are 1.5x fees of `next block`
+    scale = 1.5
+    return math.erf(val - scale)
 
 
 def print_blocks(blocks: list):
@@ -14,16 +21,12 @@ def print_blocks(blocks: list):
         else:
             blocks[i].ratio = blocks[i].reward / blocks[i-1].reward
 
-    # Calculate how likely someone is to perhaps try a re-org (simple)
-    # We estimate that someone is likely to try a re-org when fees of 
-    # `block -1` are more than double `block`'s reward. This does not consider
-    # hash power which would also affect the likelihood
     for i in range(len(blocks)):
         if i == 0:
             blocks[i].reorg = 0
         else:
             reward_diff = blocks[i-1].reward / blocks[i].reward
-            blocks[i].reorg = reorg_chance(reward_diff)
+            blocks[i].reorg = estimate_reorg(reward_diff)
 
     table = [
         ["tip offset"],             # 0
@@ -34,7 +37,7 @@ def print_blocks(blocks: list):
         ["reward / prev block"],    # 5
         ["weight"],                 # 6
         ["sigops", "N/A", "N/A"],   # 7
-        ["reorg chance"],        # 8
+        ["reorg chance"],           # 8
     ]
 
     table[0].extend([block.tip_offset for block in blocks])
@@ -45,7 +48,7 @@ def print_blocks(blocks: list):
     table[5].extend([f"{100*block.ratio:.3f}" for block in blocks])
     table[6].extend([f"{block.weight:,}" for block in blocks])
     table[7].extend([f"{block.sigopscost:,}" for block in blocks[2:]])
-    table[8].extend([f"{block.reorg:.3f}" for block in blocks])
+    table[8].extend([f"{block.reorg:.5f}" for block in blocks])
 
     table_headers = ["block:"]
     table_headers.extend([block.height for block in blocks])

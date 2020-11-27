@@ -1,4 +1,5 @@
 import logging
+from collections import OrderedDict
 from time import perf_counter
 
 from tabulate import tabulate
@@ -49,7 +50,7 @@ def create_block(mempool, height, version, previousblockhash) -> Block:
     # Limit failed tries in case we have a large mempool
     MAX_TRIES = 1000
 
-    block = Block(height, version, dict(), previousblockhash)
+    block = Block(height, version, OrderedDict(), previousblockhash)
 
     # Sort the mempool by `chain_fee_vsize`
     sorted_list = sorted_mempool_list(mempool)
